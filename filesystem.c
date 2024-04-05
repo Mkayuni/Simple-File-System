@@ -3,6 +3,11 @@
 #include <string.h>
 #include <pthread.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#endif
+
 #define NUM_BLOCKS 512
 #define BLOCK_SIZE 2048
 
@@ -41,7 +46,7 @@ int create(char *filename, int size);
 int open_file(char *filename); 
 void close_file(int fid);       
 void read_file(int fid);        
-void write_file(int fid, char *content, int siz); 
+void write_file(int fid, char *content, int size); 
 void dir();
 void delete_file(char *filename);
 
@@ -71,6 +76,26 @@ int main() {
     // Wait for p2 and p3 to finish
     pthread_join(p2, NULL);
     pthread_join(p3, NULL);
+
+    // Test dir() operation
+    printf("\nTesting dir() operation:\n");
+    dir();
+
+    // Test delete_file() operation
+    printf("\nTesting delete_file() operation:\n");
+    delete_file("file1");
+    delete_file("file2");
+
+    // Display files after deletion
+    printf("\nFiles after deletion:\n");
+    dir();
+
+#ifdef _WIN32
+    Sleep(2000); // Delay for 2 seconds (Windows)
+#endif
+
+    printf("\nPress Enter to exit...");
+    getchar(); // Wait for user to press Enter key
 
     return 0;
 }
@@ -141,7 +166,7 @@ int create(char *filename, int size) {
     // Update free blocks count
     vcb.free_blocks -= blocks_allocated;
 
-    printf("File '%s' created successfully.\n", filename);
+    printf("File '%s' (FID: %d, Start Block: %d) created successfully.\n", filename, empty_index, empty_index + 1);
     return empty_index; // Return file identifier
 }
 
@@ -149,7 +174,7 @@ int create(char *filename, int size) {
 int open_file(char *filename) {
     for (int i = 0; i < NUM_BLOCKS; i++) {
         if (strcmp(directory[i].filename, filename) == 0) {
-            printf("File '%s' opened successfully.\n", filename);
+            printf("File '%s' (FID: %d, Start Block: %d) opened successfully.\n", filename, i, directory[i].start_block);
             return i; // Return file identifier
         }
     }
@@ -159,7 +184,7 @@ int open_file(char *filename) {
 
 // Close a file
 void close_file(int fid) {
-    printf("File closed.\n");
+    printf("File (FID: %d, Start Block: %d) closed.\n", fid, directory[fid].start_block);
 }
 
 // Read from a file
@@ -177,7 +202,7 @@ void dir() {
     printf("Listing files...\n");
     for (int i = 0; i < NUM_BLOCKS; i++) {
         if (strlen(directory[i].filename) > 0) {
-            printf("File: %s, Size: %d\n", directory[i].filename, directory[i].file_size);
+            printf("File: %s (FID: %d, Start Block: %d), Size: %d\n", directory[i].filename, i, directory[i].start_block, directory[i].file_size);
         }
     }
 }
@@ -186,7 +211,7 @@ void dir() {
 void delete_file(char *filename) {
     for (int i = 0; i < NUM_BLOCKS; i++) {
         if (strcmp(directory[i].filename, filename) == 0) {
-            printf("File '%s' deleted.\n", filename);
+            printf("File '%s' (FID: %d) deleted.\n", filename, i);
             strcpy(directory[i].filename, "");
             // Mark blocks as free in the bitmap
             int start_block = directory[i].start_block;
